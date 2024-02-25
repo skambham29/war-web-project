@@ -6,7 +6,7 @@
 	<link href="static/style.css" rel="stylesheet" type="text/css">
 </head>
 <body>
-	<h1>Welcome to matrimony - 1.0.0 </h1>
+	<h1>Welcome to matrimony - 2.0.0 </h1>
 
 </body>
 </html>
