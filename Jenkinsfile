@@ -1,47 +1,49 @@
 pipeline {
-    agent any
-    tools {
-        maven 'Maven363'
+    agent { label 'linux' }
+
+
+   environment {
+        TOMCAT_HOME = '/opt/tomcat'
+        WAR_FILE = '*.war'
+        REMOTE_HOST = '20.84.52.241'
+        REMOTE_USER = 'azureuser'
     }
-    options {
-        timeout(10)
-        buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')
-    }
-    stages {
-        stage('Build') {
+
+
+   stages {
+
+       stage('Build') {
             steps {
-                sh "mvn clean install"
+                sh 'mvn clean package'
             }
         }
-        stage('upload artifact to nexus') {
+
+      stage('BKP') {
             steps {
-                nexusArtifactUploader artifacts: [
-                    [
-                        artifactId: 'wwp', 
-                        classifier: '', 
-                        file: 'target/wwp-1.0.0.war', 
-                        type: 'war'
-                    ]
-                ], 
-                    credentialsId: 'nexus3', 
-                    groupId: 'koddas.web.war', 
-                    nexusUrl: '10.0.0.91:8081', 
-                    nexusVersion: 'nexus3', 
-                    protocol: 'http', 
-                    repository: 'samplerepo', 
-                    version: '1.0.0'
+                script {
+                    
+
+                        sh '''
+                        ssh azureuser@20.84.52.241 /opt/tomcat/bin/shutdown.sh
+                        ssh azureuser@20.84.52.241 DATE=$(date +%Y-%m-%d-%s) 
+                        ssh azureuser@20.84.52.241 mv /opt/tomcat/webapps/*.war /opt/tomcat/webapps/${DATE}.war || true
+                        '''
+
+                    
+                }
             }
         }
-    }
-    post {
-        always{
-            deleteDir()
-        }
-        failure {
-            echo "sendmail -s mvn build failed receipients@my.com"
-        }
-        success {
-            echo "The job is successful"
+
+       stage('Deploy') {
+            steps {
+                script {
+                        
+                        sh "mv /home/azureuser/dev/dev/workspace/matrimony_pipeline_demo/target/*.war /home/azureuser/dev/dev/workspace/matrimony_pipeline_demo/target/matrimony.war"
+
+                        sh "scp /home/azureuser/dev/dev/workspace/matrimony_pipeline_demo/target/*.war azureuser@20.84.52.241:/opt/tomcat/webapps && ssh azureuser@20.84.52.241 /opt/tomcat/bin/startup.sh"
+                    
+                }
+            }
         }
     }
 }
